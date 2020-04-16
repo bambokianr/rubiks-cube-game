@@ -14,6 +14,7 @@ var scene;
 var camera;
 var pieces;
 var rubiksCube;
+var mouse = new THREE.Vector2();
 
 let webGLExists = (Detector.webgl) ? true : false;
 
@@ -47,8 +48,8 @@ function drawScene() {
   renderer.setClearColor(0x606060, 1); //
   document.getElementById(id).appendChild(renderer.domElement); // add renderer to the element tree - HTML DOM (append in rubik's cube div)
 
-  // [TODO] - check iniciarEscena function
-
+  document.addEventListener("mousedown", onDocumentMouseDown);
+  document.addEventListener("mouseup", onDocumentMouseUp);
   console.log("drawScene!");
 }
 
@@ -215,6 +216,25 @@ function drawRubiksCube() {
   rubiksCube = new THREE.Object3D();
   pieces.map(piece => rubiksCube.add(piece));
   scene.add(rubiksCube);
+}
+
+function onDocumentMouseDown(event) {
+  if(event.button === THREE.MOUSE.LEFT) {
+    event.preventDefault();
+
+    // transform to normalized coordinates:
+    //    xAxis -> maxLeft -1 to maxRight 1
+    //    yAxis -> maxTop 1 to maxBottom -1
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    console.log('mouse click! POSITION:', mouse);
+  }
+}
+
+function onDocumentMouseUp(event) {
+  if(event.button === THREE.MOUSE.LEFT) {
+    console.log('stop spinning face!'); //defined some conditions (analyze 'rotandoCara' and 'bloqueo' variables)
+  }
 }
 
 function animateScene() {

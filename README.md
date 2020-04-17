@@ -26,7 +26,7 @@ This project is under the MIT license. See the [LICENSE](https://choosealicense.
 - [Anti-Alias](https://www.tecmundo.com.br/video-game-e-jogos/737-o-que-e-anti-aliasing-.htm)
 - [Subdivision Surface Modifier](https://docs.blender.org/manual/en/latest/modeling/modifiers/generate/subdivision_surface.html)
 - [WARNING: undefined vertexUv](https://github.com/mrdoob/three.js/issues/8591)
-
+- [Lighting isn't working in Three.js](https://stackoverflow.com/questions/11213127/why-lighting-isnt-working-in-three-js)
 
 ---
 Made with ♥ by Rafaella Bambokian 

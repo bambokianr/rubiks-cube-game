@@ -7,6 +7,13 @@ const COLORS  = {
   BLUE: '#0046AD',
   GREEN: '#009B48',
   NULL: '#000000',
+  // WHITE: '#000000',
+  // YELLOW: '#000000',
+  // RED: '#000000',
+  // ORANGE: '#000000',
+  // BLUE: '#000000',
+  // GREEN: '#000000',
+  // NULL: '#000000',
 };
 
 var renderer;
@@ -14,6 +21,27 @@ var scene;
 var camera;
 var pieces;
 var rubiksCube;
+var controls; 
+
+var rotatingCube = false;
+var rotatingFace = false;
+var block = true; 
+
+var pointer = false; 
+var isMouseBeingClicked = false;
+
+var getPiece;
+var getNormalFace;
+
+// ---------------- UTIL???
+var initialClickSaved; 
+var initialClick = new THREE.Vector2();
+var direction = "";
+var selectedDirection = false;
+var selectedFace = false;
+
+var mouse = new THREE.Vector2();
+
 
 let webGLExists = (Detector.webgl) ? true : false;
 
@@ -47,9 +75,11 @@ function drawScene() {
   renderer.setClearColor(0x606060, 1); //
   document.getElementById(id).appendChild(renderer.domElement); // add renderer to the element tree - HTML DOM (append in rubik's cube div)
 
-  // [TODO] - check iniciarEscena function
-
-  console.log("drawScene!");
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enablePan = false;
+  controls.enableKeys = false;
+  controls.enableZoom = false;
+  controls.enableRotate = false;
 }
 
 function drawAxes(length) {
@@ -63,8 +93,8 @@ function createPiece(position, key, colors) {
   const { x, y, z } = position;
   
   // [TODO] load texture out of function?
-  var textureColor = new THREE.TextureLoader().load('./images/stickerColor.png');
-  var textureBump = new THREE.TextureLoader().load('./images/stickerBump.png');
+  // var textureColor = new THREE.TextureLoader().load('./images/stickerColor.png');
+  // var textureBump = new THREE.TextureLoader().load('./images/stickerBump.png');
   
   var geometry = new THREE.BoxGeometry(1, 1, 1, 5, 5, 5); // [TODO] study these 3 last parameters
   var material = new THREE.MeshBasicMaterial({
@@ -88,7 +118,6 @@ function createPiece(position, key, colors) {
 
   return piece;
 }
-
 
 function defineVertexUVs(geometry, colors) {
   var color1 = colors[0];
@@ -217,8 +246,141 @@ function drawRubiksCube() {
   scene.add(rubiksCube);
 }
 
+function saveInitialClick() {
+    if (!initialClickSaved) {
+      initialClickSaved = true;
+      initialClick.x = mouse.x;
+      initialClick.y = mouse.y;
+      block = false;
+    }
+}
+
+function onDocumentMouseDown(event) {
+   if(event.button === THREE.MOUSE.LEFT) {
+    isMouseBeingClicked = true;
+    pointer ? console.log('[ROTACIONAR FACE]', pointer) : console.log('[ROTACIONAR CUBO]', pointer);
+
+    event.preventDefault();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    initialClick.x = mouse.x;
+    initialClick.y = mouse.y;
+
+    if(!rotatingCube && !rotatingFace) {
+      var raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+      var intersects = raycaster.intersectObjects(rubiksCube.children);
+      if(intersects.length > 0) {
+        //// [HOUVE INTERSECÇÃO] --> posso rodar uma face do cubo, mas não sei ainda a face nem a direção selecionadas
+        block = rotatingFace; // ???????? - SEMPRE ATRIBUI FALSO - ????????
+        rotatingFace = true; //se existe intersecção com o cubo, existe uma área de face rotativa 
+        // mas não sei a face nem a direção selecionadas
+        direction = "";
+        selectedDirection = false;
+        selectedFace = false;
+      }
+    } else { // NÃO SE PREOCUPAR COM ESSE ELSE - se não houve intersecção do clique com alguma peça, posso rodar o cubo
+      rotatingCube = true;     
+    }
+  }
+}
+
+function onDocumentMouseMove(event) {
+  if(event.button === THREE.MOUSE.LEFT) { 
+    if (!isMouseBeingClicked) rotatingCube = !pointer;
+    controls.enableRotate = rotatingCube;
+    
+    var displacement = new THREE.Vector2(); //COLOCAR PARA DENTRO DO if(!rotatingCube && rotatingFace && !block) ???
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    var raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    var intersects = raycaster.intersectObjects(rubiksCube.children);
+    if(intersects.length > 0) {
+      getPiece = intersects[0].object;
+      getNormalFace = intersects[0].face.normal; //normal face vector intercepted in the cube piece
+      if (!isMouseBeingClicked) {
+        document.getElementById(id).style.cursor = "grab";
+      }
+      pointer = true;
+    } else {
+      if (!isMouseBeingClicked) {
+        document.getElementById(id).style.cursor = "default"; //somente se não tiver pressionado
+      }
+      pointer = false;
+    }
+
+    // é uma área de face rotativa e a rotação está permitida (ou seja, block is false)
+    if(!rotatingCube && rotatingFace && !block) {
+      displacement.x = mouse.x - initialClick.x;
+      displacement.y = mouse.y - initialClick.y;
+
+      if(!selectedDirection) {
+        if(displacement.y > 0.01 || displacement.y < -0.01) {
+          selectedDirection = true; 
+          direction = "V";
+          saveInitialClick();
+        }
+        if(displacement.x > 0.01 || displacement.x < -0.01) {
+          selectedDirection = true; 
+          direction = "H";
+          saveInitialClick();
+        }
+      } 
+      else if(!selectedFace) {
+        selectedFace = true;
+        face = selectFace(getPiece, getNormalFace, direction);
+        
+      }
+      updateRotationFace();
+    }
+
+    if(rotatingFace) {
+    }
+  }
+}
+
+function onDocumentMouseUp(event) {
+  if(event.button === THREE.MOUSE.LEFT) {
+    isMouseBeingClicked = false;
+    // document.getElementById(id).style.cursor = "default";
+    if(rotatingFace && !block) {
+      block = true;
+      finishRotationFace();
+    } else {
+      rotatingCube = false;
+    }
+  }
+}
+
+function selectFace(getPiece, getNormalFace, direction) {
+  // console.log('called selectedFace function');
+  // console.log('getPiece', getPiece, 'getNormalFace', getNormalFace, 'direction', direction);
+  return 'D';
+}
+
+function updateRotationFace() {
+  document.getElementById(id).style.cursor = "grabbing";
+  console.log('updateRotationFace');
+}
+function finishRotationFace() {
+  if(pointer) {
+    document.getElementById(id).style.cursor = "grab";
+  } else {
+    document.getElementById(id).style.cursor = "default";
+  }
+  rotatingFace = false; // !!!!!!!!!!!!! - NÃO É AQUI MAS PRECISA SER ATUALIZADO EM ALGUM MOMENTO - !!!!!!!!!!!!!
+  // console.log('finishRotationFace');
+}
+
+document.addEventListener("mousedown", onDocumentMouseDown);
+document.addEventListener("mousemove", onDocumentMouseMove);
+document.addEventListener("mouseup", onDocumentMouseUp);
+
 function animateScene() {
   requestAnimationFrame(animateScene);
+  controls.update();
   renderer.render(scene, camera);
 };
 animateScene();
